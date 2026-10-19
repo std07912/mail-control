@@ -20,7 +20,7 @@ Windows 10/11 x64용 독립 실행형 앱입니다. ZIP을 풀고 `SettlementMai
 
 ## 개발·빌드
 
-.NET 10 SDK / WPF, MailKit 4.18.1(MIT), PDFsharp 6.5.0(MIT), SharpZipLib 1.4.2(MIT), Microsoft.Data.Sqlite·ProtectedData 10.0.0 사용. Windows 기본 대화상자·고해상도 UI와 DPAPI를 활용하기 위해 C#/.NET을 선택했습니다. 외부 서버·광고·분석 SDK는 없습니다.
+.NET 10 SDK / WPF, MailKit 4.18.1(MIT), PDFsharp 6.2.4(MIT), SharpZipLib 1.4.2(MIT), Microsoft.Data.Sqlite.Core·ProtectedData·Pkcs 10.0.13, SQLitePCLRaw 3.0.5 사용. PDFsharp는 MIT 라이선스가 확인된 6.2.4로 고정합니다. Windows 기본 대화상자·고해상도 UI와 DPAPI를 활용하기 위해 C#/.NET을 선택했습니다. 외부 서버·광고·분석 SDK는 없습니다.
 
 ```powershell
 dotnet test Windows/SettlementMail.Tests -c Release
