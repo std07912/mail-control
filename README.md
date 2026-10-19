@@ -4,13 +4,13 @@
 
 ## 다운로드
 
-**[Android APK 다운로드](https://github.com/std07912/mail-control/releases/download/v0.2.1-debug/app-debug.apk)**
+**[Android APK 다운로드](https://github.com/std07912/mail-control/releases/download/v0.2.2-debug/app-debug.apk)**
 
 **[Windows ZIP 다운로드](https://github.com/std07912/mail-control/releases/download/windows-v0.1.1/SettlementMail-Windows-x64.zip)** · Windows 10/11 x64에서 압축을 풀고 `SettlementMail.exe`를 실행하세요. [PC 사용 설명서](Windows/README.md)
 
 Android 8.0 이상에서 다운로드한 APK를 눌러 설치하세요. 압축 해제는 필요 없습니다.
 
-**v0.1.0 사용자는:** 서명이 달라 기존 앱 삭제 후 설치해야 합니다. 계정·이력이 초기화되므로 필요한 이력을 먼저 CSV로 내보내세요.
+**v0.2.1 이하 사용자는:** 서명키 보존 오류 때문에 기존 앱에 업데이트 설치할 수 없습니다. 필요한 이력을 CSV로 내보낸 뒤 기존 앱을 삭제하고 설치하세요. 계정·앱 내부 이력이 초기화됩니다. v0.2.2부터 실제 서명키를 명시적으로 저장하며, 게시 후 키 복원 실패 시 새 키를 자동 생성하지 않고 빌드를 중단합니다.
 
 발송 간격은 **기본 30초·최소 10초**입니다. 기존 저장값은 유지되므로 필요하면 설정에서 변경하세요.
 
