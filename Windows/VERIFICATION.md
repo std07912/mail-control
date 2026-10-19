@@ -1,8 +1,8 @@
-# Windows v0.1.0 검증
+# Windows v0.1.1 검증
 
-2026-10-19 GitHub Windows 환경에서 코어 자동화 테스트, win-x64 자체 포함 EXE 빌드, 배포 EXE의 더미 파일 UI 검사를 통과했습니다.
+2026-10-19 GitHub Windows 환경에서 코어 자동화 테스트 22개(발송 간격 기본값·허용 범위 포함), win-x64 자체 포함 EXE 빌드, 배포 EXE의 더미 파일 UI 검사를 통과했습니다.
 
-[실행 기록](https://github.com/std07912/mail-control/actions/runs/39208840735)
+[실행 기록](https://github.com/std07912/mail-control/actions/runs/39212235809)
 
 검사 범위: 550개 파일 그룹화, 승인 형식 일괄 해제, MIME 크기 및 한글 파일명, ZIP 경로/CRC/암호화 거부, 불균등 PDF 페이지 분할 및 단일 페이지 초과, 원본 보존, DPAPI, SQLite 상태 전이, 가짜 SMTP의 접수·인증 실패·응답 유실·중복 방지. UI 검사는 더미 PDF/TXT 가져오기와 일괄 해제 및 화면 렌더링을 포함합니다.
 
