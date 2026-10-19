@@ -1,10 +1,12 @@
 # 정산자료 전송 도우미
 
-문서를 정리하고 네이버 메일로 나누어 보내는 개인용 Android 앱입니다.
+문서를 정리하고 네이버 메일로 나누어 보내는 개인용 Android·Windows 앱입니다.
 
 ## 다운로드
 
-**[APK 바로 다운로드](https://github.com/std07912/mail-control/releases/download/v0.2.0-debug/app-debug.apk)**
+**[Android APK 다운로드](https://github.com/std07912/mail-control/releases/download/v0.2.0-debug/app-debug.apk)**
+
+**[Windows ZIP 다운로드](https://github.com/std07912/mail-control/releases/download/windows-v0.1.0/SettlementMail-Windows-x64.zip)** · Windows 10/11 x64에서 압축을 풀고 `SettlementMail.exe`를 실행하세요. [PC 사용 설명서](Windows/README.md)
 
 Android 8.0 이상에서 다운로드한 APK를 눌러 설치하세요. 압축 해제는 필요 없습니다.
 
