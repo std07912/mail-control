@@ -3,8 +3,12 @@
 Kotlin · Jetpack Compose Material 3 · MVVM · Coroutines/Flow · Room · SAF · WorkManager.
 개인용, 백엔드·광고·분석 SDK 없음. 원본 파일은 읽기만 하며 작업은 앱 전용 저장소 복사본에서 수행합니다.
 
-**상태: 소스 구현 완료 / 컴파일·설치·실메일 검증 전. 실행 검증이 끝난 제품이나 설치 가능한 APK로 보아서는 안 됩니다.**
-이 환경에는 Java 21만 있고 Gradle·Android SDK가 없습니다. 도구 다운로드는 `proxy:8080` 연결 실패로 중단되었습니다. 실제 빌드 시도 기록은 [build-attempt.log](build-attempt.log), 상세 검증 범위는 [검증 보고서](VERIFICATION.md)에 있습니다. Debug APK는 생성되지 않았습니다.
+**최신 상태: GitHub Actions에서 컴파일·단위 테스트·lint·Debug APK 빌드 성공. 기기 실행·실메일 검증 전입니다.**
+
+[APK 다운로드 ZIP](https://github.com/std07912/mail-control/actions/runs/39195154059/artifacts/12161268212) · [성공한 빌드](https://github.com/std07912/mail-control/actions/runs/39195154059)
+
+아래 로컬 환경의 빌드 제한 기록은 이전 상태이며, 최신 결과는 문서 마지막 절을 확인하세요.
+이 환경에는 Java 21만 있고 Gradle·Android SDK가 없습니다. 도구 다운로드는 `proxy:8080` 연결 실패로 중단되었습니다. 실제 빌드 시도 기록은 [build-attempt.log](build-attempt.log), 상세 검증 범위는 [검증 보고서](VERIFICATION.md)에 있습니다. 로컬에서는 APK를 생성하지 못했으나 이후 GitHub Actions에서 생성했습니다.
 
 ## 포함 기능
 
@@ -84,3 +88,18 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 ## 로컬 작업 재개
 
 GitHub 도구 없이도 프로젝트 파일 수정과 셸 검증을 계속했습니다. 실제 DAO SQL을 로컬 SQLite에서 실행하는 테스트 10개가 통과했습니다. `python3 -m unittest discover -s scripts -p 'test_*.py' -v`로 재현할 수 있습니다. 최신 수정 및 검증 한계는 VERIFICATION.md의 추가 기록을 참조하세요. 전체 Android 빌드는 여전히 프록시 연결 오류로 차단됩니다.
+
+
+## GitHub 실제 빌드 성공 (2026-10-19 최신 상태)
+
+저장소: https://github.com/std07912/mail-control
+소스 커밋: 5ad890d12c09c3056f7ab451512d930a2e195334
+실행 결과: https://github.com/std07912/mail-control/actions/runs/39195154059
+APK 다운로드 ZIP: https://github.com/std07912/mail-control/actions/runs/39195154059/artifacts/12161268212
+
+- 최초 CI는 폐기된 Android SDK `tools` 패키지 요청으로 실패했고, `platform-tools`만 요청하도록 수정했습니다.
+- GitHub Actions에서 SDK/Gradle 설치, SQLite 테스트 10개, 정적 검사 통과.
+- `gradle --no-daemon --stacktrace testDebugUnitTest assembleDebug lintDebug` **성공** (6분 21초, 58개 태스크 실행).
+- Kotlin 컴파일·Room 코드 생성·Kotlin/JVM 단위 테스트·Debug APK 빌드·lint가 실제 수행됐습니다. 이 문서의 이전 미컴파일/미생성 기록은 당시 로컬 환경 상태이며 최신 결과는 본 절입니다.
+- `settlement-mail-debug-apk` 산출물 ZIP 20,669,257 bytes. 압축을 풀면 `app-debug.apk`가 있습니다. 비공개 저장소 접근을 위해 GitHub 로그인이 필요하며 산출물은 2026-10-26 만료 예정입니다.
+- 아직 Android 기기 instrumentation 테스트, 삼성 갤럭시 설치/실행, 100MB PDF, 실제 네이버 인증·발송은 미검증입니다. 더미자료·테스트 계정으로 기기 시험을 진행해야 합니다.

@@ -40,3 +40,18 @@ GitHub 도구 없이 기존 `/workspace/settlement-mail` 파일을 직접 읽고
 - 전체 Android 빌드 재시도: Gradle 다운로드 단계의 `proxy:8080` 연결 실패로 중단 (`build-attempt-latest.log`).
 
 **SQLite 테스트 통과는 Kotlin 컴파일·Room 코드 생성·Android 동작 검증을 대신하지 않습니다. Kotlin/JVM 테스트와 instrumentation 테스트는 여전히 미실행이며 APK는 없습니다.**
+
+
+## GitHub 실제 빌드 성공 (2026-10-19 최신 상태)
+
+저장소: https://github.com/std07912/mail-control
+소스 커밋: 5ad890d12c09c3056f7ab451512d930a2e195334
+실행 결과: https://github.com/std07912/mail-control/actions/runs/39195154059
+APK 다운로드 ZIP: https://github.com/std07912/mail-control/actions/runs/39195154059/artifacts/12161268212
+
+- 최초 CI는 폐기된 Android SDK `tools` 패키지 요청으로 실패했고, `platform-tools`만 요청하도록 수정했습니다.
+- GitHub Actions에서 SDK/Gradle 설치, SQLite 테스트 10개, 정적 검사 통과.
+- `gradle --no-daemon --stacktrace testDebugUnitTest assembleDebug lintDebug` **성공** (6분 21초, 58개 태스크 실행).
+- Kotlin 컴파일·Room 코드 생성·Kotlin/JVM 단위 테스트·Debug APK 빌드·lint가 실제 수행됐습니다. 이 문서의 이전 미컴파일/미생성 기록은 당시 로컬 환경 상태이며 최신 결과는 본 절입니다.
+- `settlement-mail-debug-apk` 산출물 ZIP 20,669,257 bytes. 압축을 풀면 `app-debug.apk`가 있습니다. 비공개 저장소 접근을 위해 GitHub 로그인이 필요하며 산출물은 2026-10-26 만료 예정입니다.
+- 아직 Android 기기 instrumentation 테스트, 삼성 갤럭시 설치/실행, 100MB PDF, 실제 네이버 인증·발송은 미검증입니다. 더미자료·테스트 계정으로 기기 시험을 진행해야 합니다.
