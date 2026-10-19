@@ -106,7 +106,7 @@ public sealed class DocumentService(WorkspacePaths paths)
                 using var input = zip.GetInputStream(entry);
                 await using (var destination = new FileStream(target,FileMode.CreateNew,FileAccess.Write,FileShare.None,65536,true))
                 {
-                    long n = await CopyLimited(input,destination,target,Math.Min(entry.Size,500*Units.MB),ct,(b,n) => crc.Update(b,0,n));
+                    long n = await CopyLimited(input,destination,target,Math.Min(entry.Size,500*Units.MB),ct,(b,n) => crc.Update(new ArraySegment<byte>(b,0,n)));
                     if ((total += n) > 1500 * Units.MB || n != entry.Size || crc.Value != entry.Crc) throw new InvalidDataException("ZIP 실제 크기 또는 CRC가 일치하지 않습니다.");
                 }
                 bool approved = policy.Approved(target);
