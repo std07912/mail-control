@@ -1,0 +1,15 @@
+test_accepted_and_confirmed_mails_cannot_be_retried_or_claimed (test_mail_dao.MailDaoSQLTest.test_accepted_and_confirmed_mails_cannot_be_retried_or_claimed) ... ok
+test_cancel_is_scoped_to_batch_and_unsent_rows (test_mail_dao.MailDaoSQLTest.test_cancel_is_scoped_to_batch_and_unsent_rows) ... ok
+test_duplicate_batch_position_is_rejected (test_mail_dao.MailDaoSQLTest.test_duplicate_batch_position_is_rejected) ... ok
+test_every_dao_query_is_extracted (test_mail_dao.MailDaoSQLTest.test_every_dao_query_is_extracted) ... ok
+test_only_failed_and_cancelled_are_retryable (test_mail_dao.MailDaoSQLTest.test_only_failed_and_cancelled_are_retryable) ... ok
+test_pending_mail_can_only_be_claimed_once (test_mail_dao.MailDaoSQLTest.test_pending_mail_can_only_be_claimed_once) ... ok
+test_recovery_preserves_accepted_and_quarantines_inflight (test_mail_dao.MailDaoSQLTest.test_recovery_preserves_accepted_and_quarantines_inflight) ... ok
+test_smtp_acceptance_response_is_preserved (test_mail_dao.MailDaoSQLTest.test_smtp_acceptance_response_is_preserved) ... ok
+test_two_database_connections_cannot_claim_same_mail (test_mail_dao.MailDaoSQLTest.test_two_database_connections_cannot_claim_same_mail) ... ok
+test_uncertain_mail_never_becomes_pending_by_retry (test_mail_dao.MailDaoSQLTest.test_uncertain_mail_never_becomes_pending_by_retry) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.003s
+
+OK
