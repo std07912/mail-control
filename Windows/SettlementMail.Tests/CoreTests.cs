@@ -18,6 +18,14 @@ public sealed class CoreTests : IDisposable
         string file=paths.At(name);await File.WriteAllBytesAsync(file,bytes);return new(Guid.NewGuid().ToString("N"),name,file,bytes.LongLength,await DocumentService.HashAsync(file));
     }
     private Settings Config()=>new(){Recipient="receiver@example.com",MessageMB=13};
+    [Fact] public void SendingIntervalDefaultsTo30AndAllows10Seconds()
+    {
+        Assert.Equal(30,new Settings().IntervalSeconds);
+        _ = new Settings{IntervalSeconds=10}.Policy();
+        _ = new Settings{IntervalSeconds=86400}.Policy();
+        foreach(int seconds in new[]{9,0,-1,86401})
+            Assert.Throws<InvalidOperationException>(()=>new Settings{IntervalSeconds=seconds}.Policy());
+    }
     [Fact] public void Groups550FilesWithoutLossInBothModes()
     {
         var files=Enumerable.Range(1,550).Select(i=>Doc(i,10000+i*137)).ToList();var policy=new Policy(700000,700000,950000,new HashSet<string>{"pdf"});

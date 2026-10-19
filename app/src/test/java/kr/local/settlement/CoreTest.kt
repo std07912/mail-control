@@ -5,6 +5,16 @@ import org.junit.Test
 import java.io.File
 
 class CoreTest {
+    @Test fun sendingIntervalDefaultsTo30AndAllows10Seconds() {
+        assertEquals(30L, Settings().seconds())
+        assertEquals(10L, Settings(interval = "10").seconds())
+        assertEquals(86400L, Settings(interval = "86400").seconds())
+        assertThrows(IllegalStateException::class.java) { Settings(interval = "abc").seconds() }
+        for (value in listOf("9", "0", "-1", "86401")) {
+            assertThrows(IllegalArgumentException::class.java) { Settings(interval = value).seconds() }
+        }
+    }
+
     private fun doc(n: Int, size: Long, name: String = "정산_${n}.pdf") = Doc("$n", name, "/dummy/$n", size, "$n")
     @Test fun handlesMoreThan500FilesWithoutLossAndHonorsBothLimits() {
         val files = (1..550).map { doc(it, 10_000L + it * 137L) }

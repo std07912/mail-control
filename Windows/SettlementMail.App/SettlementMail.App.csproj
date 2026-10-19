@@ -2,7 +2,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType><UseWPF>true</UseWPF>
     <AssemblyName>SettlementMail</AssemblyName>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <PublishTrimmed>false</PublishTrimmed>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <DebugType>embedded</DebugType>

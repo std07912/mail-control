@@ -410,7 +410,7 @@ fun stateText(state: String) = when (state) {
                 Field(settings.pdfMB, { onSettings(settings.copy(pdfMB = it)) }, "PDF 목표 MB", !busy, Modifier.weight(1f), KeyboardType.Number)
                 Field(settings.interval, { onSettings(settings.copy(interval = it)) }, "발송 간격 초", !busy, Modifier.weight(1f), KeyboardType.Number)
             }
-            Text("PDF 1~9MB · 발송 간격 30초 이상", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("PDF 1~9MB · 발송 간격 10초 이상 · 기본 30초", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             TextButton({ advanced = !advanced }, contentPadding = PaddingValues(0.dp)) { Text(if (advanced) "세부 기준 접기" else "승인 형식·메시지 제한 설정") }
             if (advanced) {
                 Field(settings.messageMB, { onSettings(settings.copy(messageMB = it)) }, "인코딩 후 전체 메시지 제한 MB", !busy, keyboard = KeyboardType.Number)

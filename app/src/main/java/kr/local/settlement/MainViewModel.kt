@@ -16,7 +16,7 @@ import org.json.JSONObject
 data class Settings(
     val recipient: String = "", val title: String = "정산자료", val job: String = "사후정산",
     val attachMB: String = "9", val fileMB: String = "9", val messageMB: String = "13", val pdfMB: String = "9",
-    val interval: String = "60", val approved: String = "pdf,xls,xlsx,doc,docx,hwp,hwpx,jpg,jpeg,png"
+    val interval: String = "30", val approved: String = "pdf,xls,xlsx,doc,docx,hwp,hwpx,jpg,jpeg,png"
 ) {
     fun policy(): Policy {
         fun bytes(s: String): Long = (s.toLongOrNull() ?: error("용량은 정수로 입력하세요.")).also { require(it in 1..500) { "용량은 1~500MB" } } * MB
@@ -24,7 +24,7 @@ data class Settings(
         require(ext.isNotEmpty() && ext.all { it.matches(Regex("[a-z0-9]{1,12}")) }) { "승인 확장자 설정 확인" }
         return Policy(bytes(attachMB), bytes(messageMB), bytes(fileMB), ext)
     }
-    fun seconds(): Long = (interval.toLongOrNull() ?: error("발송 간격은 정수로 입력하세요.")).also { require(it in 30..86400) { "간격은 30~86400초" } }
+    fun seconds(): Long = (interval.toLongOrNull() ?: error("발송 간격은 정수로 입력하세요.")).also { require(it in 10..86400) { "간격은 10~86400초" } }
 }
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
@@ -42,7 +42,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     var settings = MutableStateFlow(Settings(
         prefs.getString("recipient", "")!!, prefs.getString("title", "정산자료")!!, prefs.getString("job", "사후정산")!!,
         prefs.getString("attachMB", "9")!!, prefs.getString("fileMB", "9")!!, prefs.getString("messageMB", "13")!!,
-        prefs.getString("pdfMB", "9")!!, prefs.getString("interval", "60")!!,
+        prefs.getString("pdfMB", "9")!!, prefs.getString("interval", "30")!!,
         prefs.getString("approved", Settings().approved)!!
     )); private set
     private val _accountEmail = MutableStateFlow("")

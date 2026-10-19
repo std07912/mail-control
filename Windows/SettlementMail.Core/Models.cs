@@ -17,15 +17,15 @@ public sealed record Settings
     public int FileMB { get; init; } = 9;
     public int MessageMB { get; init; } = 13;
     public int PdfMB { get; init; } = 9;
-    public int IntervalSeconds { get; init; } = 60;
+    public int IntervalSeconds { get; init; } = 30;
     public string Extensions { get; init; } = "pdf,xls,xlsx,doc,docx,hwp,hwpx,jpg,jpeg,png";
     public bool Minimize { get; init; }
     public Policy Policy()
     {
         if (AttachmentMB is < 1 or > 500 || FileMB is < 1 or > 500 || MessageMB is < 1 or > 500)
             throw new InvalidOperationException("첨부·개별·메시지 용량은 1~500MB로 입력하세요.");
-        if (PdfMB is < 1 or > 9 || IntervalSeconds is < 30 or > 86400)
-            throw new InvalidOperationException("PDF 목표는 1~9MB, 발송 간격은 30~86400초입니다.");
+        if (PdfMB is < 1 or > 9 || IntervalSeconds is < 10 or > 86400)
+            throw new InvalidOperationException("PDF 목표는 1~9MB, 발송 간격은 10~86400초입니다.");
         var extensions = Extensions.Split(',').Select(x => x.Trim().TrimStart('.').ToLowerInvariant()).Where(x => x.Length > 0).ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (extensions.Count == 0 || extensions.Any(x => !Regex.IsMatch(x, "^[a-z0-9]{1,12}$"))) throw new InvalidOperationException("승인 확장자는 쉼표로 구분해 입력하세요.");
         return new(AttachmentMB * Units.MB, FileMB * Units.MB, MessageMB * Units.MB, extensions);

@@ -104,7 +104,7 @@ object Mailer {
                 target.outputStream().buffered().use { message.writeTo(it) }
                 require(target.length() <= policy.messageLimit) { "실제 MIME 메시지 ${target.length()} bytes: 승인 제한 초과. 첨부 기준을 낮추세요." }
                 MailRow(id, batch, job, index + 1, groups.size, recipient, subject, user, docsJson(files),
-                    target.path, target.length(), intervalSeconds = interval.coerceAtLeast(30), messageLimit = policy.messageLimit)
+                    target.path, target.length(), intervalSeconds = interval.coerceAtLeast(10), messageLimit = policy.messageLimit)
             }
         } catch (e: Exception) { dir.deleteRecursively(); throw e }
     }

@@ -8,7 +8,7 @@ on:
       - 'gradle.properties'
       - '.github/workflows/android.yml'
 permissions:
-  contents: read
+  contents: write
   actions: read
 jobs:
   build:
@@ -111,3 +111,19 @@ jobs:
             app/build/reports/androidTests/
             app/build/outputs/androidTest-results/
           retention-days: 7
+
+  publish:
+    needs: [build, device-check]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: settlement-mail-debug-apk
+          path: dist
+      - name: Publish tested APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          sha256sum dist/app-debug.apk > dist/app-debug.apk.sha256
+          gh release create v0.2.1-debug dist/app-debug.apk dist/app-debug.apk.sha256 --target '${{ github.sha }}' --title '정산자료 전송 도우미 v0.2.1 · 발송 간격' --notes '기본 발송 간격 30초, 최소 10초. 기존 저장 설정과 승인 작업의 간격은 유지합니다. 네이버 공식 보장 간격이 아닙니다. 단위 테스트·lint·에뮬레이터 검사를 통과한 APK입니다.' --prerelease
