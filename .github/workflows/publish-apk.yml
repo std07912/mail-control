@@ -37,7 +37,7 @@ jobs:
           sha256sum dist/app-debug.apk > dist/app-debug.apk.sha256
           gh release create v0.2.0-debug \
             dist/app-debug.apk dist/app-debug.apk.sha256 \
-            --target 8ffc110ca829a14e889bdbda72e85d1d0d80fa3d \
+            --target "${{ github.sha }}" \
             --title '정산자료 전송 도우미 v0.2.0 · UI 개선' \
             --notes '미승인 형식 일괄 선택 해제, 하단 메뉴, 파일 현황·상태 카드, 계정 저장 표시, 다크 모드를 추가했습니다. 컴파일·단위 테스트·lint와 Android 에뮬레이터 테스트를 통과했습니다. APK를 바로 설치하세요. 이전 v0.1.0과 서명이 달라 기존 앱 삭제 후 설치해야 하며 저장된 계정·이력이 초기화됩니다. 필요한 이력은 먼저 CSV로 내보내세요. 이 버전부터 같은 Debug 서명키를 재사용합니다.' \
             --prerelease
