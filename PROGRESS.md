@@ -55,3 +55,8 @@ APK 다운로드 ZIP: https://github.com/std07912/mail-control/actions/runs/3919
 - Kotlin 컴파일·Room 코드 생성·Kotlin/JVM 단위 테스트·Debug APK 빌드·lint가 실제 수행됐습니다. 이 문서의 이전 미컴파일/미생성 기록은 당시 로컬 환경 상태이며 최신 결과는 본 절입니다.
 - `settlement-mail-debug-apk` 산출물 ZIP 20,669,257 bytes. 압축을 풀면 `app-debug.apk`가 있습니다. 비공개 저장소 접근을 위해 GitHub 로그인이 필요하며 산출물은 2026-10-26 만료 예정입니다.
 - 아직 Android 기기 instrumentation 테스트, 삼성 갤럭시 설치/실행, 100MB PDF, 실제 네이버 인증·발송은 미검증입니다. 더미자료·테스트 계정으로 기기 시험을 진행해야 합니다.
+
+
+## v0.2.0 업데이트
+
+미승인 형식 일괄 선택 해제와 UI 개편을 완료했습니다. 하단 5개 메뉴, 문서 현황 카드, 파일 상태 배지·필터, 계정 저장 표시, 접을 수 있는 세부 설정, 작업별 발송 상태를 제공합니다. 컴파일·단위 테스트·lint·API 29 에뮬레이터 테스트가 통과했습니다. 최신 검증은 VERIFICATION.md의 v0.2.0 절을 참조하세요.
