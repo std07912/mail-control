@@ -1,0 +1,59 @@
+name: Windows build
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['Windows/**', '.github/workflows/windows.yml']
+permissions:
+  contents: write
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+      - name: Test Windows core
+        run: dotnet test Windows/SettlementMail.Tests/SettlementMail.Tests.csproj -c Release --logger 'trx;LogFileName=windows-tests.trx' --results-directory windows-test-results
+      - name: Publish standalone executable
+        run: dotnet publish Windows/SettlementMail.App/SettlementMail.App.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o windows-publish
+      - name: Run published EXE and UI smoke test
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:GITHUB_WORKSPACE 'windows-smoke'
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          $p = Start-Process ./windows-publish/SettlementMail.exe -ArgumentList '--smoke-test', $dir -Wait -PassThru
+          if ($p.ExitCode -ne 0) { Get-Content $dir/smoke-error.txt -ErrorAction SilentlyContinue; throw "GUI smoke check failed: $($p.ExitCode)" }
+          Get-Content $dir/result.txt
+      - name: Bundle notices and package
+        shell: pwsh
+        run: |
+          Copy-Item Windows/README.md windows-publish/사용설명서.md
+          ./Windows/collect-licenses.ps1 -Destination windows-publish/THIRD-PARTY-LICENSES
+          Compress-Archive -Path windows-publish/* -DestinationPath SettlementMail-Windows-x64.zip
+          (Get-FileHash SettlementMail-Windows-x64.zip -Algorithm SHA256).Hash | Set-Content SettlementMail-Windows-x64.zip.sha256
+      - name: Windows app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: settlement-mail-windows-x64
+          path: |
+            SettlementMail-Windows-x64.zip
+            SettlementMail-Windows-x64.zip.sha256
+          retention-days: 7
+      - name: Publish Windows release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release create windows-v0.1.0 SettlementMail-Windows-x64.zip SettlementMail-Windows-x64.zip.sha256 --target '${{ github.sha }}' --title '정산자료 전송 도우미 · Windows v0.1.0' --notes 'Windows 10/11 x64용. ZIP을 풀고 SettlementMail.exe를 실행하세요. 별도 .NET 설치 없이 실행하도록 포함했습니다. 코어 테스트와 배포 EXE의 더미 파일 UI 검사를 통과했습니다. 네이버 계정은 PC에서 별도로 보안 저장하세요. 실제 SMTP 발송과 대형 업무 문서는 더미자료·테스트 계정으로 먼저 검증하세요.' --prerelease
+      - name: Diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-diagnostics
+          path: |
+            windows-test-results/
+            windows-smoke/
+          if-no-files-found: ignore
+          retention-days: 7
