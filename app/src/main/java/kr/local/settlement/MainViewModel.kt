@@ -45,8 +45,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         prefs.getString("pdfMB", "9")!!, prefs.getString("interval", "60")!!,
         prefs.getString("approved", Settings().approved)!!
     )); private set
+    private val _accountEmail = MutableStateFlow("")
+    val accountEmail = _accountEmail.asStateFlow()
+    private val _connectionOk = MutableStateFlow(false)
+    val connectionOk = _connectionOk.asStateFlow()
     private var task: Job? = null
     init { runTask("선택 목록 복원") {
+        _accountEmail.value = SecretStore(context).read()?.first.orEmpty()
         if (selection.exists() || File(selection.path + ".bak").exists()) {
             val j = JSONArray(selectionStore.openRead().bufferedReader().use { it.readText() })
             _docs.value = parseDocs(j.toString()).mapIndexed { i, d ->
@@ -111,6 +116,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun toggle(id: String) = runTask("선택 변경") {
         _docs.value = _docs.value.map { if (it.id == id) it.copy(included = !it.included) else it }; invalidateDraft(); persistSelection()
     }
+    fun excludeUnapprovedSelection() = runTask("미승인 형식 선택 해제") {
+        val next = excludeUnapproved(_docs.value, settings.value.policy())
+        val count = _docs.value.count { it.included } - next.count { it.included }
+        if (count > 0) {
+            persistSelection(next)
+            _docs.value = next
+            invalidateDraft()
+        }
+        _message.value = "미승인 형식 ${count}개를 선택 해제했습니다. 파일은 보존됩니다."
+    }
     fun move(id: String, direction: Int) = runTask("순서 변경") {
         val list = _docs.value.toMutableList(); val old = list.indexOfFirst { it.id == id }; val next = old + direction
         if (old >= 0 && next in list.indices) { val d = list.removeAt(old); list.add(next, d); _docs.value = list; invalidateDraft(); persistSelection() }
@@ -147,9 +162,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         require(address.substringAfter('@').equals("naver.com", true)) { "개인 네이버 @naver.com 계정을 사용하세요." }
         require(password.isNotBlank()) { "애플리케이션 비밀번호를 입력하세요." }
         SecretStore(context).save(address, password); invalidateDraft()
+        _accountEmail.value = address; _connectionOk.value = false
         _message.value = "Keystore 기반 암호화 저장 완료. SMTP 연결 테스트를 진행하세요."
     }
-    fun testAccount() = runTask("SMTP 연결 테스트") { _message.value = Mailer.test(context) }
+    fun testAccount() = runTask("SMTP 연결 테스트") {
+        _connectionOk.value = false
+        _message.value = Mailer.test(context)
+        _connectionOk.value = true
+    }
     fun prepare(minimize: Boolean) = runTask("메일 구성 및 실제 MIME 크기 검증") {
         invalidateDraft(); val s = settings.value
         _draft.value = Mailer.prepare(context, docs.value, s.policy(), minimize, s.recipient.trim(), s.title, s.job, s.seconds())

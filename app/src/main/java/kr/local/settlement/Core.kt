@@ -81,3 +81,8 @@ fun csvCell(value: String): String {
 // Once DATA may have reached SMTP, transport loss must never imply safe automatic retry.
 fun deliveryFailureState(sending: Boolean, explicitlyRejected: Boolean, cancelled: Boolean): String =
     if (sending && !explicitlyRejected) "UNCERTAIN" else if (cancelled) "CANCELLED" else "FAILED"
+
+/** Deselect only unapproved extensions; preserve approved oversized PDFs for processing. */
+fun excludeUnapproved(files: List<Doc>, policy: Policy): List<Doc> = files.map { doc ->
+    if (doc.included && !policy.approved(doc.name)) doc.copy(included = false) else doc
+}

@@ -61,6 +61,25 @@ class CoreTest {
         assertEquals("CANCELLED", deliveryFailureState(false, false, true))
         assertEquals("FAILED", deliveryFailureState(false, false, false))
     }
+    @Test fun bulkExclusionKeepsApprovedOversizedFilesAndAllMetadata() {
+        val allowed = doc(1, 12 * MB, "대용량.PDF")
+        val blocked = doc(2, 10, "설명.txt").copy(note = "원본 메모", origin = "압축/설명.txt")
+        val alreadyExcluded = doc(3, 10, "제외.exe").copy(included = false)
+        val files = listOf(allowed, blocked, alreadyExcluded)
+        val result = excludeUnapproved(files, Policy())
+        assertEquals(allowed, result[0])
+        assertEquals(blocked.copy(included = false), result[1])
+        assertEquals(alreadyExcluded, result[2])
+        assertTrue(blocked.included)
+        assertEquals(result, excludeUnapproved(result, Policy()))
+    }
+    @Test fun bulkExclusionRespectsCustomApprovedExtensionsFor550Files() {
+        val files = (1..550).map { doc(it, 100, if (it % 2 == 0) "문서_$it.PDF" else "기록_$it.TXT") }
+        val result = excludeUnapproved(files, Policy(extensions = setOf("txt")))
+        assertEquals(275, result.count { it.included })
+        assertEquals(files.map { it.id }, result.map { it.id })
+        assertTrue(result.filter { it.included }.all { it.name.endsWith("TXT") })
+    }
     @Test fun csvEscapesQuotesAndPreventsFormulaInjection() {
         assertEquals("\"' =SUM(A1)\"", csvCell(" =SUM(A1)"))
         assertEquals("\"'@test\"", csvCell("@test"))
