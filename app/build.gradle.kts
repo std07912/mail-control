@@ -11,9 +11,17 @@ android {
         applicationId = "kr.local.settlement"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.2.1"
+        versionCode = 4
+        versionName = "0.2.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+    signingConfigs.getByName("debug") {
+        System.getenv("SETTLEMENT_DEBUG_KEY")?.let { keyPath ->
+            storeFile = file(keyPath)
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
     buildFeatures { compose = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
