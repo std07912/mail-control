@@ -1,0 +1,40 @@
+name: Publish tested debug APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/publish-apk.yml']
+permissions:
+  actions: read
+  contents: write
+concurrency:
+  group: publish-debug-v0.1.0
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download APK from successful build
+        uses: actions/download-artifact@v4
+        with:
+          name: settlement-mail-debug-apk
+          path: dist
+          run-id: 39195154059
+          github-token: ${{ github.token }}
+      - name: Check APK archive
+        run: |
+          test -s dist/app-debug.apk
+          unzip -t dist/app-debug.apk > /dev/null
+          sha256sum dist/app-debug.apk > dist/app-debug.apk.sha256
+      - name: Publish downloadable APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release create v0.1.0-debug \
+            dist/app-debug.apk dist/app-debug.apk.sha256 \
+            --target 5ad890d12c09c3056f7ab451512d930a2e195334 \
+            --title '정산자료 전송 도우미 v0.1.0 (테스트용)' \
+            --notes 'app-debug.apk를 내려받아 Android 스마트폰에 설치하세요. 압축 해제는 필요 없습니다. 컴파일·단위 테스트·lint 통과. 테스트용 Debug APK이며 더미 파일과 테스트 계정으로 먼저 확인하세요.' \
+            --prerelease
