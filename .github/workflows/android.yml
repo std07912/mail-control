@@ -100,12 +100,7 @@ jobs:
           target: default
           profile: pixel_4
           disable-animations: true
-          script: gradle --no-daemon connectedDebugAndroidTest
-      - name: Collect UI screenshots
-        if: always()
-        run: |
-          mkdir -p ui-screenshots
-          adb pull /sdcard/Android/data/kr.local.settlement/files/screenshots ui-screenshots || true
+          script: bash scripts/device-check.sh
       - name: Device reports and screenshots
         if: always()
         uses: actions/upload-artifact@v4

@@ -21,7 +21,8 @@ class ProcessingDeviceTest {
     @Test fun unequalPageSizesAreMeasuredAndOversizedPageIsFlagged() = runBlocking {
         PDFBoxResourceLoader.init(context)
         val source = File(context.cacheDir, "dummy-${UUID.randomUUID()}.pdf")
-        val expected = listOf(700_000, 1_400_000, 100)
+        val expected = listOf(900_000, 3_000_000, 100)
+        val random = java.util.Random(2026L)
         var parts = emptyList<Doc>()
         try {
             PDDocument().use { document ->
@@ -29,9 +30,15 @@ class ProcessingDeviceTest {
                     val page = PDPage(); document.addPage(page)
                     val stream = document.document.createCOSStream()
                     stream.createOutputStream().use { out ->
-                        // Valid PDF comment content, uncompressed so sizes are intentionally uneven.
-                        val line = ("%" + "x".repeat(98) + "\n").toByteArray()
-                        repeat(bytes / line.size) { out.write(line) }
+                        // importPage compresses content. Random printable comments keep the
+                        // second page oversized even after reserialization/compression.
+                        val line = ByteArray(100)
+                        repeat(bytes / line.size) {
+                            line[0] = '%'.code.toByte()
+                            for (i in 1 until 99) line[i] = (33 + random.nextInt(94)).toByte()
+                            line[99] = '\n'.code.toByte()
+                            out.write(line)
+                        }
                     }
                     page.cosObject.setItem(COSName.CONTENTS, stream)
                 }
