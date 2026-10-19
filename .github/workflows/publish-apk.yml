@@ -27,39 +27,6 @@ jobs:
           path: dist
           run-id: 39199763133
           github-token: ${{ github.token }}
-      - name: Download emulator screenshots
-        uses: actions/download-artifact@v4
-        with:
-          name: android-device-check
-          path: device-check
-          run-id: 39199763133
-          github-token: ${{ github.token }}
-      - name: Prepare screen previews
-        run: |
-          python3 -m pip install --quiet --break-system-packages pillow==11.3.0
-          python3 - <<'PY'
-          from PIL import Image
-          from pathlib import Path
-          import base64, json
-          output = Path('previews'); output.mkdir()
-          images = sorted(Path('device-check').glob('**/0[1-5]-*.png'))
-          if len(images) != 5:
-              raise SystemExit(f'Expected five UI screenshots, found {len(images)}')
-          for source in images:
-              image = Image.open(source).convert('RGB')
-              image.resize((360, round(image.height * 360 / image.width)), Image.Resampling.LANCZOS).save(output/source.name)
-              data = base64.b64encode((output/source.name).read_bytes()).decode()
-              (output/(source.stem+'.json')).write_text(json.dumps({'content':data,'encoding':'base64'}))
-          PY
-      - name: Save preview blobs for visual review
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          for image in previews/*.json; do
-            blob=$(gh api --method POST repos/$GH_REPO/git/blobs --input "$image" --jq .sha)
-            echo "PREVIEW_BLOB $(basename "$image" .json) $blob"
-          done
       - name: Check APK and publish release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -69,7 +36,7 @@ jobs:
           unzip -t dist/app-debug.apk > /dev/null
           sha256sum dist/app-debug.apk > dist/app-debug.apk.sha256
           gh release create v0.2.0-debug \
-            dist/app-debug.apk dist/app-debug.apk.sha256 previews/*.png \
+            dist/app-debug.apk dist/app-debug.apk.sha256 \
             --target 8ffc110ca829a14e889bdbda72e85d1d0d80fa3d \
             --title '정산자료 전송 도우미 v0.2.0 · UI 개선' \
             --notes '미승인 형식 일괄 선택 해제, 하단 메뉴, 파일 현황·상태 카드, 계정 저장 표시, 다크 모드를 추가했습니다. 컴파일·단위 테스트·lint와 Android 에뮬레이터 테스트를 통과했습니다. APK를 바로 설치하세요. 이전 v0.1.0과 서명이 달라 기존 앱 삭제 후 설치해야 하며 저장된 계정·이력이 초기화됩니다. 필요한 이력은 먼저 CSV로 내보내세요. 이 버전부터 같은 Debug 서명키를 재사용합니다.' \
