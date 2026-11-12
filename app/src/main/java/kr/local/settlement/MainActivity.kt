@@ -75,6 +75,7 @@ fun stateText(state: String) = when (state) {
         if (!busy && !initialNavigationDone) { initialNavigationDone = true; if (accountEmail.isNotEmpty()) tab = 0 }
     }
     var minimize by rememberSaveable { mutableStateOf(false) }
+    var newWorkConfirmation by remember { mutableStateOf(false) }
     var confirmation by remember { mutableStateOf(false) }
     var pdfWarning by remember { mutableStateOf<Doc?>(null) }
     var zipDoc by remember { mutableStateOf<Doc?>(null) }
@@ -88,8 +89,12 @@ fun stateText(state: String) = when (state) {
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { it?.let(vm::export) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     val policy = runCatching { settings.policy() }.getOrNull()
-    val labels = listOf("파일", "처리", "구성", "발송", "설정")
-    val icons = listOf(Icons.Outlined.List, Icons.Outlined.Build, Icons.Outlined.Email, Icons.Outlined.Send, Icons.Outlined.Settings)
+    val openBatches = history.groupBy { it.batch }.filterValues { rows ->
+        rows.any { it.state != "ACCEPTED" && it.state != "CONFIRMED" }
+    }.keys
+    val activeHistory = history.filter { it.batch in openBatches }
+    val labels = listOf("파일", "처리", "구성", "발송", "설정", "이력")
+    val icons = listOf(Icons.Outlined.List, Icons.Outlined.Build, Icons.Outlined.Email, Icons.Outlined.Send, Icons.Outlined.Settings, Icons.Outlined.List)
     Scaffold(containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 22.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -119,12 +124,14 @@ fun stateText(state: String) = when (state) {
                     Row(Modifier.fillMaxWidth().padding(start = 12.dp, top = 8.dp, bottom = 8.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(if (busy) Icons.Outlined.Refresh else Icons.Outlined.Info, null, Modifier.size(17.dp), tint = MaterialTheme.colorScheme.primary)
                         Spacer(Modifier.width(8.dp))
-                        Text(message, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                        Text(message, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, maxLines = 8, overflow = TextOverflow.Ellipsis)
                         if (busy) TextButton(vm::cancelProcessing, contentPadding = PaddingValues(6.dp)) { Text("취소") }
                     }
                 }
             }
             if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+            if (tab in 0..2) TextButton({ newWorkConfirmation = true }, enabled = !busy,
+                modifier = Modifier.align(Alignment.End).padding(horizontal = 18.dp)) { Text("새 작업 · 목록 비우기") }
             when (tab) {
                 0, 1 -> FilesScreen(docs, policy, tab == 1, busy,
                     onAdd = { files.launch(arrayOf("*/*")) }, onFolder = { folder.launch(null) },
@@ -148,19 +155,35 @@ fun stateText(state: String) = when (state) {
                     })
                 2 -> ComposeScreen(settings, draft, busy, minimize, { minimize = it }, vm::updateSettings,
                     { vm.prepare(minimize) }, { confirmation = true })
-                3 -> SendingScreen(history, busy, vm::recover, vm::cancelBatch, vm::retry, { resolving = it })
+                3 -> SendingScreen(activeHistory, busy, vm::recover, vm::cancelBatch, vm::retry, { resolving = it })
                 4 -> SettingsScreen(settings, accountEmail, connectionOk, history, busy, vm::updateSettings,
                     vm::saveAccount, vm::testAccount, { export.launch("정산자료_발송내역.csv") }, vm::clearTemporary,
                     { if (Build.VERSION.SDK_INT >= 33) permission.launch(Manifest.permission.POST_NOTIFICATIONS) })
+                5 -> {
+                    Column {
+                        OutlinedButton({ export.launch("정산자료_발송내역.csv") }, enabled = !busy,
+                            modifier = Modifier.padding(horizontal = 18.dp)) { Text("CSV 내보내기") }
+                        SendingScreen(history, busy, {}, {}, {}, {}, historyOnly = true)
+                    }
+                }
             }
         }
     }
+    if (newWorkConfirmation) AlertDialog(onDismissRequest = { newWorkConfirmation = false },
+        title = { Text("새 작업을 시작할까요?") },
+        text = { Text("현재 파일 선택과 미승인 메일 구성을 비웁니다. 원본 파일·발송내역·계정·이미 승인된 발송 작업은 유지됩니다.") },
+        confirmButton = { TextButton({ newWorkConfirmation = false; vm.newWork(); tab = 0 }) { Text("새 작업 시작") } },
+        dismissButton = { TextButton({ newWorkConfirmation = false }) { Text("취소") } })
     if (confirmation) AlertDialog(onDismissRequest = { confirmation = false }, title = { Text("발송 전 마지막 확인") },
         text = { Text("${draft.size}개 메일을 ${settings.recipient}로 순차 발송합니다. 수신자, 첨부파일과 기관 승인 정책을 모두 확인했습니까?") },
         confirmButton = { TextButton({ confirmation = false; vm.approve(); tab = 3 }) { Text("확인한 목록 발송") } },
         dismissButton = { TextButton({ confirmation = false }) { Text("다시 검토") } })
     pdfWarning?.let { doc -> AlertDialog(onDismissRequest = { pdfWarning = null }, title = { Text("PDF 분할 확인") },
-        text = { Text("전자서명·인증정보가 분할본에 유지되지 않을 수 있습니다. 원본은 보존합니다. 단일 페이지가 제한을 넘으면 별도 처리 필요로 표시합니다.") },
+        text = { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("${doc.name} · ${sizeText(doc.size)}")
+            Field(settings.pdfMB, { vm.updateSettings(settings.copy(pdfMB = it)) }, "분할 목표 MB (1~9)", !busy, keyboard = KeyboardType.Number)
+            Text("전자서명·인증정보가 유지되지 않을 수 있습니다. 원본은 보존합니다. 단일 페이지가 제한을 넘으면 별도 처리 필요로 표시합니다.")
+        } },
         confirmButton = { TextButton({ pdfWarning = null; vm.split(doc) }) { Text("분할하기") } }, dismissButton = { TextButton({ pdfWarning = null }) { Text("취소") } }) }
     zipDoc?.let { doc -> AlertDialog(onDismissRequest = { zipDoc = null }, title = { Text("ZIP 내부 문서 ${zipItems.size}개") },
         text = { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -260,7 +283,7 @@ fun stateText(state: String) = when (state) {
                 TextButton({ onPreview(doc) }, enabled = !busy, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("미리보기") }
                 Spacer(Modifier.weight(1f))
                 if (doc.name.endsWith(".zip", true)) FilledTonalButton({ onZip(doc) }, enabled = !busy, shape = RoundedCornerShape(10.dp)) { Text("ZIP 해제") }
-                if (processing && doc.name.endsWith(".pdf", true)) FilledTonalButton({ onSplit(doc) }, enabled = !busy, shape = RoundedCornerShape(10.dp)) { Text("PDF 분할") }
+                if (doc.name.endsWith(".pdf", true)) FilledTonalButton({ onSplit(doc) }, enabled = !busy, shape = RoundedCornerShape(10.dp)) { Text("PDF 분할") }
                 Box {
                     IconButton({ menu = true }, enabled = !busy) { Icon(Icons.Outlined.MoreVert, "파일 추가 작업") }
                     DropdownMenu(menu, { menu = false }) {
@@ -327,11 +350,11 @@ fun stateText(state: String) = when (state) {
 
 @Composable private fun SendingScreen(
     history: List<MailRow>, busy: Boolean, onRecover: () -> Unit,
-    onCancel: (String) -> Unit, onRetry: (MailRow) -> Unit, onResolve: (MailRow) -> Unit
+    onCancel: (String) -> Unit, onRetry: (MailRow) -> Unit, onResolve: (MailRow) -> Unit, historyOnly: Boolean = false
 ) {
     val groups = history.groupBy { it.batch }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { PageHeading("발송 현황", "작업별 진행 상황과 접수 결과를 확인하세요.") }
+        item { PageHeading(if (historyOnly) "발송 이력" else "발송 현황", if (historyOnly) "완료한 작업을 포함한 전체 기록입니다." else "진행 중이거나 확인이 필요한 작업만 표시합니다.") }
         if (history.isEmpty()) item { EmptyState("아직 발송한 메일이 없어요", "메일 구성에서 목록을 검토하고\n최종 승인하면 이곳에 표시됩니다.", Icons.Outlined.Send) }
         else item { Hint("접수 여부가 불확실한 메일은 서버 또는 관리자에게 확인한 뒤 처리하세요.") }
         groups.forEach { (_, rows) ->
@@ -353,7 +376,7 @@ fun stateText(state: String) = when (state) {
                         Text(row.recipient, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         if (row.error.isNotEmpty()) Text(row.error, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                         if (row.response.isNotEmpty()) Text(row.response, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        when (row.state) {
+                        if (!historyOnly) when (row.state) {
                             "PENDING", "CONNECTING", "SENDING" -> OutlinedButton({ onCancel(row.batch) }) { Text("이 작업 전체 취소") }
                             "FAILED", "CANCELLED" -> FilledTonalButton({ onRetry(row) }, enabled = !busy) { Text("이 메일만 재시도") }
                             "UNCERTAIN" -> FilledTonalButton({ onResolve(row) }, enabled = !busy) { Text("접수 확인 결과 입력") }
@@ -362,7 +385,7 @@ fun stateText(state: String) = when (state) {
                 }
             }
         }
-        item { TextButton(onRecover, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("앱 중단 후 남은 상태 확인") } }
+        if (!historyOnly) item { TextButton(onRecover, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("앱 중단 후 남은 상태 확인") } }
     }
 }
 

@@ -59,6 +59,45 @@ class ProcessingDeviceTest {
             assertTrue(parts[2].name.endsWith("3-3p.pdf"))
         } finally { source.delete(); parts.forEach { File(it.path).delete() } }
     }
+    @Test fun scannedPdfOver10MbSplitsAndPreservesPages() = runBlocking {
+        PDFBoxResourceLoader.init(context)
+        val source = File(context.cacheDir, "scanned-${UUID.randomUUID()}.pdf")
+        var parts = emptyList<Doc>()
+        try {
+            PDDocument().use { pdf ->
+                val random = java.util.Random(71)
+                repeat(4) {
+                    val bitmap = android.graphics.Bitmap.createBitmap(1536, 2048, android.graphics.Bitmap.Config.ARGB_8888)
+                    try {
+                        val pixels = IntArray(1536 * 2048) { 0xff000000.toInt() or random.nextInt(0x1000000) }
+                        bitmap.setPixels(pixels, 0, 1536, 0, 0, 1536, 2048)
+                        val bytes = java.io.ByteArrayOutputStream().also {
+                            check(bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 100, it))
+                        }.toByteArray()
+                        val page = PDPage(); pdf.addPage(page)
+                        val image = com.tom_roush.pdfbox.pdmodel.graphics.image.PDImageXObject.createFromByteArray(pdf, bytes, "scan")
+                        com.tom_roush.pdfbox.pdmodel.PDPageContentStream(pdf, page).use { out ->
+                            out.drawImage(image, 0f, 0f, 500f, 700f)
+                        }
+                    } finally { bitmap.recycle() }
+                }
+                pdf.save(source)
+            }
+            assertTrue("Fixture must exceed 10MB", source.length() > 10 * MB)
+            val original = hash(source)
+            var updates = 0
+            parts = Documents(context).split(Doc("scan", "스캔더미.pdf", source.path, source.length(), original), 9 * MB) { updates++ }
+            assertTrue(parts.size > 1)
+            assertTrue(updates > 0)
+            assertTrue(parts.all { it.included && it.size <= 9 * MB })
+            var pages = 0
+            parts.forEach { part ->
+                PDDocument.load(File(part.path)).use { pages += it.numberOfPages }
+            }
+            assertEquals(4, pages)
+            assertEquals(original, hash(source))
+        } finally { source.delete(); parts.forEach { File(it.path).delete() } }
+    }
     @Test fun normalizedDuplicateZipPathsAreRejected() {
         val zip = File(context.cacheDir, "dummy-${UUID.randomUUID()}.zip")
         try {

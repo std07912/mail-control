@@ -6,4 +6,4 @@ collect_screens() {
 }
 # android-emulator-runner shuts the emulator down when this script exits.
 trap collect_screens EXIT
-gradle --no-daemon connectedDebugAndroidTest
+gradle --no-daemon testDebugUnitTest lintDebug connectedDebugAndroidTest

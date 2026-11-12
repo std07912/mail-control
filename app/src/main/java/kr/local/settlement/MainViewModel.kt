@@ -59,9 +59,55 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             }.filter { File(it.path).exists() }
         }
         // Outbox files without a committed history record are abandoned drafts only.
-        val tracked = dao.all().map { it.batch }.toSet()
+        val previous = dao.all()
+        // Upgrade legacy installations which predate the submitted-workspace marker.
+        val completedIds = previous.groupBy { it.batch }.values
+            .filter { rows -> rows.all { it.state == "ACCEPTED" || it.state == "CONFIRMED" } }
+            .flatten().flatMap { parseDocs(it.attachments) }.map { it.id }.toSet()
+        if (prefs.getString("submitted_batch", null) == null && _docs.value.any { it.id in completedIds }) {
+            val remaining = _docs.value.filterNot { it.id in completedIds }
+            val next = if (remaining.none { it.included }) emptyList() else remaining
+            persistSelection(next); _docs.value = next
+            if (next.isEmpty()) resetComposition()
+        }
+        val tracked = previous.map { it.batch }.toSet()
         File(context.filesDir, "outbox").listFiles()?.filter { it.isDirectory && it.name !in tracked }?.forEach { it.deleteRecursively() }
     } }
+    init {
+        viewModelScope.launch {
+            combine(dao.observe(), _busy) { rows, busy -> rows to busy }.collect { (rows, busy) ->
+                val batch = prefs.getString("submitted_batch", null)
+                val submitted = rows.filter { it.batch == batch }
+                if (!busy && batch != null && submitted.isNotEmpty() &&
+                    submitted.all { it.state == "ACCEPTED" || it.state == "CONFIRMED" }) {
+                    runTask("발송 완료 목록 정리") { finishSubmittedSelection(batch) }
+                }
+            }
+        }
+    }
+    private fun resetComposition() {
+        val next = settings.value.copy(job = "사후정산", title = "정산자료")
+        settings.value = next
+        prefs.edit().putString("job", next.job).putString("title", next.title).apply()
+    }
+    private fun finishSubmittedSelection(batch: String) {
+        if (prefs.getString("submitted_batch", null) != batch) return
+        val ids = prefs.getStringSet("submitted_ids", emptySet()).orEmpty()
+        val next = _docs.value.filterNot { it.id in ids }
+        persistSelection(next)
+        _docs.value = next
+        if (next.isEmpty() && _draft.value.isEmpty()) resetComposition()
+        prefs.edit().remove("submitted_batch").remove("submitted_ids").apply()
+        _message.value = "발송 완료 · 작업 목록을 정리했습니다. 접수 결과는 이력 탭에서 확인하세요."
+    }
+    fun newWork() = runTask("새 작업") {
+        persistSelection(emptyList())
+        invalidateDraft()
+        _docs.value = emptyList()
+        resetComposition()
+        prefs.edit().remove("submitted_batch").remove("submitted_ids").apply()
+        _message.value = "새 작업을 시작합니다. 기존 발송내역과 재시도 자료는 보존됩니다."
+    }
     fun runTask(label: String, action: suspend () -> Unit) {
         if (_busy.value) return
         _busy.value = true; _message.value = label
@@ -143,11 +189,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             _message.value = "이미 목표 용량 이하입니다. 분할 없이 원본을 유지합니다."
             return@runTask
         }
-        val parts = documents.split(doc, size * MB)
+        val parts = try {
+            documents.split(doc, size * MB) { progress -> _message.value = progress }
+        } catch (e: CancellationException) { throw e }
+        catch (e: Exception) {
+            throw IllegalStateException("PDF 분할 실패: ${e.message ?: e.javaClass.simpleName}. 암호화·손상 여부와 저장공간을 확인하세요.", e)
+        }
         // A one-page rewrite can equal the original hash; keep its required-action status
         // on the retained original even when duplicate output is discarded.
         val sourceNote = if (parts.size == 1 && !parts.single().included) parts.single().note else "분할 원본 보존"
         add(parts, sourceId = doc.id, sourceNote = sourceNote)
+        val oversized = parts.count { !it.included }
+        _message.value = "PDF 분할 완료: ${parts.size}개 생성 · 전송 가능 ${parts.size - oversized}개 · 단일 페이지 초과 ${oversized}개. 아래 목록에서 분할본을 확인하세요."
     }
     fun updateSettings(value: Settings) {
         if (_busy.value) return
@@ -176,6 +229,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
     fun approve() = runTask("승인된 작업 등록") {
         val rows = _draft.value; require(rows.isNotEmpty())
+        // Record exactly this workspace before scheduling; a later workspace is never cleared by this batch.
+        prefs.edit().putString("submitted_batch", rows.first().batch)
+            .putStringSet("submitted_ids", _docs.value.map { it.id }.toSet()).commit().also { check(it) }
         dao.insert(rows); _draft.value = emptyList(); Mailer.enqueue(context, rows.first().batch)
         _message.value = "${rows.size}개 메일 발송 작업이 등록되었습니다."
     }

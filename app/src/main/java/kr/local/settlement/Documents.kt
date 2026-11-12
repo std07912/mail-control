@@ -96,7 +96,7 @@ class Documents(private val context: Context) {
             return result
         } catch (e: Exception) { dir.deleteRecursively(); throw e }
     }
-    suspend fun split(doc: Doc, limit: Long): List<Doc> {
+    suspend fun split(doc: Doc, limit: Long, progress: (String) -> Unit = {}): List<Doc> {
         require(limit in MB..9 * MB)
         // Cleanup can remove this directory while the Documents instance remains alive.
         check(pdfTemp.isDirectory || pdfTemp.mkdirs()) { "PDF 임시 디렉터리 생성 실패" }
@@ -108,8 +108,10 @@ class Documents(private val context: Context) {
                 require(source.numberOfPages > 0) { "페이지가 없는 PDF" }
                 require(source.currentAccessPermission.canExtractContent()) { "PDF 추출 권한 없음" }
                 var start = 0; var part = 1
+                progress("PDF ${source.numberOfPages}페이지 확인 · 분할 시작")
                 suspend fun make(end: Int, target: File) {
                     currentCoroutineContext().ensureActive(); space(File(doc.path).length().coerceAtMost(100 * MB))
+                    progress("PDF ${start + 1}~${end} / ${source.numberOfPages}페이지 · 실제 크기 검증 중")
                     PDDocument(MemoryUsageSetting.setupTempFileOnly().setTempDir(pdfTemp)).use { dest ->
                         for (p in start until end) {
                             currentCoroutineContext().ensureActive()
