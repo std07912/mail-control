@@ -25,3 +25,5 @@ Android 8.0 이상에서 다운로드한 APK를 눌러 설치하세요. 압축 �
 테스트용 Debug 버전입니다. 컴파일·단위 테스트·lint·Android 에뮬레이터 테스트를 통과했으며, 더미 파일로 먼저 확인하세요. SMTP 접수 성공은 최종 수신을 보장하지 않습니다.
 
 [사용 설명서](USER_GUIDE.md) · [개발·빌드 안내](DEVELOPMENT.md) · [검증 보고서](VERIFICATION.md)
+
+[작업 정리·PDF 검증 수정 현황 — 아직 APK 미배포](UNRELEASED.md)
