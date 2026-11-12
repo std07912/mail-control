@@ -446,16 +446,7 @@ fun stateText(state: String) = when (state) {
             TextButton({ clearConfirmation = true }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("완료된 작업 임시파일 삭제") }
             if (Build.VERSION.SDK_INT >= 33) TextButton(onPermission, modifier = Modifier.fillMaxWidth()) { Text("백그라운드 발송 알림 허용") }
         } }
-        if (history.isNotEmpty()) item { Text("최근 발송 내역", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
-        items(history.take(20), key = { it.id }) { row ->
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
-                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    Text(row.subject, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Text(row.recipient, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    StatePill(stateText(row.state), warning = row.state in listOf("FAILED", "UNCERTAIN"), neutral = row.state == "PENDING")
-                }
-            }
-        }
+        item { Hint("발송 기록은 하단 이력 탭에서 확인하세요.") }
     }
     if (clearConfirmation) AlertDialog(onDismissRequest = { clearConfirmation = false }, title = { Text("임시파일을 삭제할까요?") },
         text = { Text("선택 목록과 완료 작업의 앱 내부 복사본을 정리합니다. 원본과 발송내역은 보존합니다. 미완료 작업이 있으면 삭제하지 않습니다.") },

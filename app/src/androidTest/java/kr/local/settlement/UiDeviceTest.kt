@@ -59,6 +59,12 @@ class UiDeviceTest {
         ui.onNodeWithText("구성").performClick(); screenshot("03-compose")
         ui.onNodeWithText("발송").performClick(); screenshot("04-sending")
         ui.onNodeWithText("설정").performClick(); screenshot("05-settings")
+        ui.onNodeWithText("이력").performClick(); screenshot("06-history")
+        ui.onNodeWithText("파일").performClick()
+        ui.onNodeWithText("새 작업 · 목록 비우기").performClick()
+        ui.onNodeWithText("새 작업 시작").performClick()
+        ui.waitUntil(15000) { !vm.busy.value && vm.docs.value.isEmpty() }
+        originals.forEach { assertEquals(hashes[it.path], hash(it)) }
     }
 
     private fun screenshot(name: String) {
