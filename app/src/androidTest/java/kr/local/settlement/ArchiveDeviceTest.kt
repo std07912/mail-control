@@ -49,10 +49,13 @@ class ArchiveDeviceTest {
         val random=java.util.Random(53)
         val expected=(1..4).associate { "하위/증빙_${it}.pdf" to ByteArray(800000).also(random::nextBytes) }
         val doc=fixture(expected + ("제외.exe" to byteArrayOf(1,2,3)))
+        val sentinel=File(context.filesDir,"repack-preserve-${UUID.randomUUID()}").apply { writeText("preserve") }
         var outputs=emptyList<Doc>()
         try {
             outputs=ArchivePacker(context).repack(doc,MB,false,Policy())
             assertEquals(4,outputs.size)
+            assertTrue("App files outside extraction root must survive cleanup",sentinel.isFile)
+            assertTrue(outputs.all { File(it.path).isFile })
             val actual=linkedMapOf<String,ByteArray>()
             outputs.forEach { part ->
                 assertTrue(part.size <= MB)
@@ -65,7 +68,7 @@ class ArchiveDeviceTest {
             assertEquals(expected.keys,actual.keys)
             expected.forEach { (name,data) -> assertArrayEquals(data,actual[name]) }
             assertEquals(doc.sha256,hash(File(doc.path)))
-        } finally { outputs.forEach { File(it.path).delete() };folder.deleteRecursively() }
+        } finally { sentinel.delete();outputs.forEach { File(it.path).delete() };folder.deleteRecursively() }
     }
     @Test fun splitZipReassemblesLargeSingleFileWithoutRenamingContents() = runBlocking {
         val bytes=ByteArray(2400000).also { java.util.Random(31).nextBytes(it) }

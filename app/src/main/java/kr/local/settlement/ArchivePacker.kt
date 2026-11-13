@@ -18,7 +18,18 @@ class ArchivePacker(private val context: Context) {
         val service = Documents(context)
         val extracted = service.extract(source, policy, encoding)
         val root = service.root
-        val extractionRoot = extracted.firstOrNull()?.let { File(root, File(it.path).relativeTo(root).path.substringBefore(File.separator)) }
+        // Android /data/user/0 and /data/data can name the same directory.
+        // Normalize BOTH sides before finding the child; never resolve '..' for cleanup.
+        val canonicalRoot = root.canonicalFile
+        val extractionRoot = extracted.firstOrNull()?.let { first ->
+            val child = File(first.path).canonicalFile.relativeTo(canonicalRoot).path.substringBefore(File.separator)
+            require(child.matches(Regex("zip-[0-9a-fA-F-]{36}"))) { "압축 임시 폴더 경로 확인 실패" }
+            File(canonicalRoot,child).canonicalFile.also { directory ->
+                require(directory.parentFile == canonicalRoot && extracted.all {
+                    File(it.path).canonicalPath.startsWith(directory.path + File.separator)
+                }) { "압축 임시 폴더 범위를 벗어난 경로" }
+            }
+        }
         val dir = File(root,"packed-${UUID.randomUUID()}")
         try {
             check(dir.mkdirs()) { "압축 출력 폴더 생성 실패" }
