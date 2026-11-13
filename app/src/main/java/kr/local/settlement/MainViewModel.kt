@@ -130,12 +130,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         } catch (e: Exception) { selectionStore.failWrite(stream); throw e }
     }
     private fun invalidateDraft() { _draft.value.forEach { File(it.eml).delete() }; _draft.value = emptyList() }
-    private fun add(incoming: List<Doc>, sourceId: String? = null, sourceNote: String = "") {
+    private fun add(incoming: List<Doc>, sourceId: String? = null, sourceNote: String = "", preserveParts: Boolean = false) {
         var base = _docs.value.map { if (it.id == sourceId) it.copy(included = false, note = sourceNote) else it }
         val hashes = base.map { it.sha256 }.toMutableSet()
         val duplicateFiles = mutableListOf<File>()
         val unique = incoming.filter {
-            if (hashes.add(it.sha256)) true else {
+            if (preserveParts || hashes.add(it.sha256)) true else {
                 duplicateFiles += File(it.path)
                 // If rewriting a PDF leaves identical bytes, keep the retained copy usable.
                 if (it.included && sourceId != null) base = base.map { old ->
@@ -177,10 +177,29 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (old >= 0 && next in list.indices) { val d = list.removeAt(old); list.add(next, d); _docs.value = list; invalidateDraft(); persistSelection() }
     }
     fun sort() = runTask("파일명 정렬") { _docs.value = _docs.value.sortedBy { it.name }; invalidateDraft(); persistSelection() }
-    suspend fun zipPreview(doc: Doc): List<String> = withContext(Dispatchers.IO) { documents.zipPreview(doc) }
-    fun extract(doc: Doc) = runTask("ZIP 압축 해제") {
-        val extracted = documents.extract(doc, settings.value.policy())
+    suspend fun zipPreview(doc: Doc, encoding: String = "AUTO"): List<String> = withContext(Dispatchers.IO) { documents.zipPreview(doc, encoding) }
+    fun extract(doc: Doc, encoding: String = "AUTO") = runTask("ZIP 압축 해제") {
+        val extracted = documents.extract(doc, settings.value.policy(), encoding)
         add(extracted, sourceId = doc.id, sourceNote = "해제 원본 보존")
+    }
+    fun repack(doc: Doc, megabytes: String, splitArchive: Boolean, encoding: String, approved: Boolean) = runTask("ZIP 소용량 압축") {
+        require(approved) { "수신기관의 압축파일 및 분할 형식 승인을 먼저 확인하세요." }
+        val amount = megabytes.toLongOrNull() ?: error("ZIP 목표 MB는 정수로 입력하세요.")
+        require(amount in 1..500) { "ZIP 목표는 1~500MB입니다." }
+        val policy = settings.value.policy()
+        require(amount*MB <= minOf(policy.fileLimit, policy.attachmentLimit)) { "ZIP 목표가 승인된 개별/첨부 용량을 넘습니다. 설정을 확인하세요." }
+        val parts = ArchivePacker(context).repack(doc,amount*MB,splitArchive,policy,encoding) { _message.value = it }
+        try {
+            // User approval applies only to the actual generated ZIP/volume extensions.
+            val extensions = (policy.extensions + parts.map { it.name.substringAfterLast('.').lowercase() }).sorted().joinToString(",")
+            val nextSettings = settings.value.copy(approved = extensions)
+            val nextPolicy = nextSettings.policy()
+            require(parts.all { nextPolicy.problem(it) == null }) { "압축본이 MIME 메시지 제한을 넘습니다. ZIP 목표를 낮춰 주세요." }
+            add(parts,doc.id,"압축 원본 보존",preserveParts=true)
+            settings.value = nextSettings
+            prefs.edit().putString("approved", extensions).apply()
+            _message.value = "ZIP ${parts.size}개 생성 완료. 메일 구성에서 전체 목록을 확인한 뒤 발송하세요."
+        } catch (e: Exception) { parts.forEach { File(it.path).delete() };throw e }
     }
     fun split(doc: Doc) = runTask("PDF 분할: 실제 크기 확인 중") {
         val size = settings.value.pdfMB.toLongOrNull() ?: error("PDF 목표 크기를 입력하세요.")
@@ -274,3 +293,4 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         File(context.filesDir, "outbox").deleteRecursively()
     }
 }
+

@@ -79,6 +79,11 @@ fun stateText(state: String) = when (state) {
     var confirmation by remember { mutableStateOf(false) }
     var pdfWarning by remember { mutableStateOf<Doc?>(null) }
     var zipDoc by remember { mutableStateOf<Doc?>(null) }
+    var zipEncoding by rememberSaveable { mutableStateOf("AUTO") }
+    var packDoc by remember { mutableStateOf<Doc?>(null) }
+    var packLimit by rememberSaveable { mutableStateOf("9") }
+    var packSplit by rememberSaveable { mutableStateOf(false) }
+    var packApproved by remember { mutableStateOf(false) }
     var zipItems by remember { mutableStateOf<List<String>>(emptyList()) }
     var problem by remember { mutableStateOf("") }
     var resolving by remember { mutableStateOf<MailRow?>(null) }
@@ -148,7 +153,7 @@ fun stateText(state: String) = when (state) {
                         }.onFailure { problem = "미리보기 앱이 없거나 문서를 열 수 없습니다." }
                     }, onZip = { doc ->
                         scope.launch {
-                            try { zipItems = vm.zipPreview(doc); zipDoc = doc }
+                            try { zipEncoding = "AUTO"; zipItems = vm.zipPreview(doc, zipEncoding); zipDoc = doc }
                             catch (e: CancellationException) { throw e }
                             catch (e: Exception) { problem = e.message ?: "ZIP 확인 실패" }
                         }
@@ -187,10 +192,45 @@ fun stateText(state: String) = when (state) {
         confirmButton = { TextButton({ pdfWarning = null; vm.split(doc) }) { Text("분할하기") } }, dismissButton = { TextButton({ pdfWarning = null }) { Text("취소") } }) }
     zipDoc?.let { doc -> AlertDialog(onDismissRequest = { zipDoc = null }, title = { Text("ZIP 내부 문서 ${zipItems.size}개") },
         text = { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("승인받은 문서에 한해 해제하세요. 미승인 형식은 전송에서 제외합니다.")
+            Text("승인받은 문서에 한해 해제하세요. 이름이 깨지면 한글(CP949)을 선택해 미리보기를 확인하세요.")
+            ButtonRow {
+                listOf("AUTO" to "자동", "CP949" to "한글(CP949)", "UTF-8" to "UTF-8", "CP437" to "CP437").forEach { (code, label) ->
+                    FilterChip(zipEncoding == code, {
+                        zipEncoding = code; zipItems = emptyList()
+                        scope.launch {
+                            try { zipItems = vm.zipPreview(doc, code) }
+                            catch (e: CancellationException) { throw e }
+                            catch (e: Exception) { problem = "ZIP 이름 해석 실패: ${e.message}. 다른 인코딩을 선택하세요." }
+                        }
+                    }, label = { Text(label) })
+                }
+            }
+            OutlinedButton({ packDoc = doc; zipDoc = null; packApproved = false }, enabled = zipItems.isNotEmpty()) { Text("소용량 ZIP 만들기") }
             LazyColumn(Modifier.heightIn(max = 300.dp)) { items(zipItems) { Text(it, Modifier.padding(vertical = 4.dp), style = MaterialTheme.typography.bodySmall) } }
         } },
-        confirmButton = { TextButton({ zipDoc = null; vm.extract(doc) }) { Text("승인된 문서 해제") } }, dismissButton = { TextButton({ zipDoc = null }) { Text("취소") } }) }
+        confirmButton = { TextButton({ zipDoc = null; vm.extract(doc, zipEncoding) }, enabled = zipItems.isNotEmpty()) { Text("승인된 문서 해제") } }, dismissButton = { TextButton({ zipDoc = null }) { Text("취소") } }) }
+    packDoc?.let { doc -> AlertDialog(onDismissRequest = { packDoc = null }, title = { Text("소용량 ZIP 구성") },
+        text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(doc.name)
+            Field(packLimit, { packLimit = it }, "파일당 목표 MB (기본 9)", !busy, keyboard = KeyboardType.Number)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(!packSplit, { packSplit = false }); Text("독립 ZIP 여러 개")
+            }
+            Text("각 ZIP만으로 해제 가능. 큰 파일 하나는 나뉘지 않습니다.", style = MaterialTheme.typography.bodySmall)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(packSplit, { packSplit = true }); Text("분할 ZIP (.z01 + .zip)")
+            }
+            Text("분할 ZIP은 모든 조각을 같은 폴더에 모아 호환 앱에서 해제해야 합니다.", style = MaterialTheme.typography.bodySmall)
+            Text("승인된 내부 문서만 압축합니다. 원본 보존 · 암호화 없음 · UTF-8 파일명")
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(packApproved, { packApproved = it })
+                Text("수신기관에서 ZIP 및 선택한 분할 형식의 전송을 승인받았습니다.", style = MaterialTheme.typography.bodySmall)
+            }
+        } },
+        confirmButton = { TextButton({
+            packDoc = null; vm.repack(doc,packLimit,packSplit,zipEncoding,packApproved)
+        }, enabled = !busy && packApproved) { Text("압축 만들기") } },
+        dismissButton = { TextButton({ packDoc = null }) { Text("취소") } }) }
     if (problem.isNotEmpty()) AlertDialog(onDismissRequest = { problem = "" }, title = { Text("확인해 주세요") }, text = { Text(problem) },
         confirmButton = { TextButton({ problem = "" }) { Text("닫기") } })
     resolving?.let { row -> AlertDialog(onDismissRequest = { resolving = null }, title = { Text("서버 접수 여부 확인") },
@@ -453,3 +493,4 @@ fun stateText(state: String) = when (state) {
         confirmButton = { TextButton({ clearConfirmation = false; onClear() }) { Text("정리하기") } },
         dismissButton = { TextButton({ clearConfirmation = false }) { Text("취소") } })
 }
+

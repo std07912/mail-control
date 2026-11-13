@@ -9,6 +9,11 @@ import com.tom_roush.pdfbox.pdmodel.PDDocument
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import net.lingala.zip4j.ZipFile
+import net.lingala.zip4j.model.FileHeader
+import java.nio.ByteBuffer
+import java.nio.charset.Charset
+import java.nio.charset.CodingErrorAction
+import java.util.zip.CRC32
 import java.io.File
 import java.util.UUID
 
@@ -48,14 +53,45 @@ class Documents(private val context: Context) {
         try { walk(DocumentFile.fromTreeUri(context, uri) ?: error("폴더 접근 불가"), 0); return result }
         catch (e: Exception) { result.forEach { File(it.path).delete() }; throw e }
     }
-    fun zipPreview(doc: Doc): List<String> = ZipFile(doc.path).use { zip ->
+    private fun openZip(doc: Doc) = ZipFile(doc.path).apply { charset = Charsets.ISO_8859_1 }
+    private fun decodedName(header: FileHeader, encoding: String): String {
+        val raw = header.fileName.toByteArray(Charsets.ISO_8859_1)
+        fun strict(bytes: ByteArray, charset: Charset): String = charset.newDecoder()
+            .onMalformedInput(CodingErrorAction.REPORT).onUnmappableCharacter(CodingErrorAction.REPORT)
+            .decode(ByteBuffer.wrap(bytes)).toString()
+        if (header.isFileNameUTF8Encoded) return strict(raw, Charsets.UTF_8)
+        if (encoding == "AUTO") {
+            // Info-ZIP Unicode path field: only trust it if the original name CRC matches.
+            header.extraDataRecords?.firstOrNull { it.header == 0x7075L }?.data?.let { data ->
+                if (data.size > 5 && data[0].toInt() == 1) {
+                    val expected = (1..4).fold(0L) { n, i -> n or ((data[i].toLong() and 255) shl (8*(i-1))) }
+                    val crc = CRC32().apply { update(raw) }.value
+                    if (crc == expected) return strict(data.copyOfRange(5,data.size), Charsets.UTF_8)
+                }
+            }
+            runCatching { strict(raw, Charsets.UTF_8) }.getOrNull()?.let { return it }
+            val korean = runCatching { strict(raw, Charset.forName("MS949")) }.getOrNull()
+            if (korean != null && korean.any { it in '\uAC00'..'\uD7A3' || it in '\u3130'..'\u318F' }) return korean
+            return String(raw, Charset.forName("CP437"))
+        }
+        val charset = when (encoding) {
+            "CP949" -> Charset.forName("MS949")
+            "UTF-8" -> Charsets.UTF_8
+            "CP437" -> Charset.forName("CP437")
+            else -> error("ZIP 파일명 인코딩을 확인하세요.")
+        }
+        return strict(raw, charset)
+    }
+    fun zipPreview(doc: Doc, encoding: String = "AUTO"): List<String> = openZip(doc).use { zip ->
         require(!zip.isEncrypted) { "비밀번호 ZIP은 지원하지 않습니다. 승인된 환경에서 해제하세요." }
+        require(!zip.isSplitArchive) { "분할 ZIP은 모든 조각을 같은 폴더에 모아 호환 압축 앱에서 해제하세요." }
         val headers = zip.fileHeaders
         require(headers.size <= 5000) { "ZIP 항목 5,000개 초과" }
         var total = 0L
         val names = HashSet<String>()
         headers.map { h ->
-            val checkedTarget = safeZipTarget(File(root, "preview"), h.fileName)
+            val name = decodedName(h, encoding)
+            val checkedTarget = safeZipTarget(File(root, "preview"), name)
             require(names.add(checkedTarget.path)) { "ZIP 내부 중복 경로" }
             val a = h.externalFileAttributes
             require(a.size < 4 || (a[3].toInt() and 0xF0) != 0xA0) { "ZIP 심볼릭 링크 차단" }
@@ -64,18 +100,19 @@ class Documents(private val context: Context) {
             total += h.uncompressedSize
             require(total <= 1500 * MB) { "ZIP 해제 합계 1.5GB 초과" }
             require(h.uncompressedSize <= maxOf(1L, h.compressedSize) * 200) { "ZIP 압축률 안전 한도 초과" }
-            "${h.fileName} (${h.uncompressedSize} bytes)"
+            "$name (${h.uncompressedSize} bytes)"
         }
     }
-    suspend fun extract(doc: Doc, policy: Policy): List<Doc> {
-        zipPreview(doc)
+    suspend fun extract(doc: Doc, policy: Policy, encoding: String = "AUTO"): List<Doc> {
+        zipPreview(doc, encoding)
         val dir = File(root, "zip-${UUID.randomUUID()}").apply { mkdirs() }
         val result = mutableListOf<Doc>()
         try {
             var total = 0L
-            ZipFile(doc.path).use { zip -> for (h in zip.fileHeaders) {
+            openZip(doc).use { zip -> for (h in zip.fileHeaders) {
                 currentCoroutineContext().ensureActive()
-                val target = safeZipTarget(dir, h.fileName)
+                val name = decodedName(h, encoding)
+                val target = safeZipTarget(dir, name)
                 if (h.isDirectory) { target.mkdirs(); continue }
                 target.parentFile!!.mkdirs(); var count = 0L
                 zip.getInputStream(h).use { input -> target.outputStream().buffered().use { out ->
@@ -91,7 +128,7 @@ class Documents(private val context: Context) {
                 require(count == h.uncompressedSize) { "ZIP 크기 불일치" }
                 val approved = policy.approved(target.name)
                 result += Doc(UUID.randomUUID().toString(), target.name, target.path, target.length(), hash(target),
-                    included = approved, note = if (approved) "ZIP: ${h.fileName}" else "승인 형식 아님", origin = "${doc.name}/${h.fileName}")
+                    included = approved, note = if (approved) "ZIP: $name" else "승인 형식 아님", origin = "${doc.name}/$name")
             } }
             return result
         } catch (e: Exception) { dir.deleteRecursively(); throw e }
@@ -150,3 +187,4 @@ class Documents(private val context: Context) {
         } catch (e: Exception) { dir.deleteRecursively(); throw e }
     }
 }
+
