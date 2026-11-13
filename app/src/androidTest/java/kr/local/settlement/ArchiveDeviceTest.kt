@@ -58,6 +58,7 @@ class ArchiveDeviceTest {
                 assertTrue(part.size <= MB)
                 ZipFile(part.path).use { zip ->
                     assertFalse(zip.isSplitArchive)
+                    assertTrue("Empty central directory: " + part.name + "; bytes=" + part.size + "; tail=" + File(part.path).readBytes().takeLast(22).joinToString { (it.toInt() and 255).toString(16) },zip.fileHeaders.isNotEmpty())
                     zip.fileHeaders.forEach { entry -> actual[entry.fileName]=zip.getInputStream(entry).use { it.readBytes() } }
                 }
             }
@@ -73,11 +74,11 @@ class ArchiveDeviceTest {
         var outputs=emptyList<Doc>()
         try {
             outputs=ArchivePacker(context).repack(doc,MB,true,Policy())
-            assertTrue(outputs.size >= 3)
+            assertTrue("Volumes: " + outputs.joinToString { it.name + ":" + it.size }, outputs.size >= 3)
             assertTrue(outputs.all { it.size <= MB })
             assertEquals("zip",File(outputs.last().path).extension)
             ZipFile(outputs.last().path).use { zip ->
-                assertTrue(zip.isSplitArchive)
+                assertTrue("Split flag false; headers=" + zip.fileHeaders.size + "; parts=" + outputs.joinToString { it.name + ":" + it.size }, zip.isSplitArchive)
                 assertEquals(name,zip.fileHeaders.single().fileName)
                 assertArrayEquals(bytes,zip.getInputStream(zip.fileHeaders.single()).use { it.readBytes() })
             }

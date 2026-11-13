@@ -78,7 +78,8 @@ class ArchivePacker(private val context: Context) {
                 }
             }
             val outputs = dir.listFiles().orEmpty().filter { it.isFile }.sortedWith(compareBy<File> {
-                if (it.extension == "zip") Int.MAX_VALUE else it.extension.removePrefix("z").toIntOrNull() ?: Int.MAX_VALUE-1
+                if (!split) it.name.substringAfterLast('_').substringBeforeLast('.').toIntOrNull() ?: Int.MAX_VALUE
+                else if (it.extension == "zip") Int.MAX_VALUE else it.extension.removePrefix("z").toIntOrNull() ?: Int.MAX_VALUE-1
             }.thenBy { it.name })
             require(outputs.isNotEmpty() && outputs.all { it.length() in 1..limit }) { "생성 ZIP 실제 크기가 목표를 넘습니다. 더 작은 목표로 다시 시도하세요." }
             return outputs.map { file ->

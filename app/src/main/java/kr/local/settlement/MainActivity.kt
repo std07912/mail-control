@@ -152,8 +152,9 @@ fun stateText(state: String) = when (state) {
                                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION), "문서 미리보기"))
                         }.onFailure { problem = "미리보기 앱이 없거나 문서를 열 수 없습니다." }
                     }, onZip = { doc ->
+                        zipEncoding = "AUTO";zipItems = emptyList();zipDoc = doc
                         scope.launch {
-                            try { zipEncoding = "AUTO"; zipItems = vm.zipPreview(doc, zipEncoding); zipDoc = doc }
+                            try { val result = vm.zipPreview(doc,"AUTO"); if (zipDoc?.id == doc.id && zipEncoding == "AUTO") zipItems = result }
                             catch (e: CancellationException) { throw e }
                             catch (e: Exception) { problem = e.message ?: "ZIP 확인 실패" }
                         }
@@ -198,7 +199,7 @@ fun stateText(state: String) = when (state) {
                     FilterChip(zipEncoding == code, {
                         zipEncoding = code; zipItems = emptyList()
                         scope.launch {
-                            try { zipItems = vm.zipPreview(doc, code) }
+                            try { val result = vm.zipPreview(doc, code); if (zipDoc?.id == doc.id && zipEncoding == code) zipItems = result }
                             catch (e: CancellationException) { throw e }
                             catch (e: Exception) { problem = "ZIP 이름 해석 실패: ${e.message}. 다른 인코딩을 선택하세요." }
                         }
