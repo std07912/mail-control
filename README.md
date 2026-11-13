@@ -4,13 +4,13 @@
 
 ## 다운로드
 
-**[Android APK 다운로드](https://github.com/std07912/mail-control/releases/download/v0.4.0-debug/app-debug.apk)**
+**[Android APK 다운로드](https://github.com/std07912/mail-control/releases/download/v0.4.1-debug/app-debug.apk)**
 
 **[Windows ZIP 다운로드](https://github.com/std07912/mail-control/releases/download/windows-v0.1.1/SettlementMail-Windows-x64.zip)** · Windows 10/11 x64에서 압축을 풀고 `SettlementMail.exe`를 실행하세요. [PC 사용 설명서](Windows/README.md)
 
 Android 8.0 이상에서 다운로드한 APK를 눌러 설치하세요. 압축 해제는 필요 없습니다.
 
-**v0.3.0은 삭제 없이 업데이트 가능합니다.** v0.2.2 이하와는 서명이 다릅니다. 새 폰에서는 바로 설치하고 계정을 한 번 저장하세요.
+**v0.3.0·v0.4.0은 삭제 없이 업데이트 가능합니다.** v0.2.2 이하와는 서명이 다릅니다. 새 폰에서는 바로 설치하고 계정을 한 번 저장하세요.
 
 발송 간격은 **기본 30초·최소 10초**입니다. 기존 저장값은 유지되므로 필요하면 설정에서 변경하세요.
 
@@ -30,3 +30,5 @@ Android 8.0 이상에서 다운로드한 APK를 눌러 설치하세요. 압축 �
 [v0.3.0 변경 및 검증 내역](UNRELEASED.md)
 
 [ZIP 소용량 압축·한글 파일명 안내](ARCHIVES.md)
+
+v0.4.1: 청록색 문서·봉투·전송 화살표 앱 아이콘 적용. [아이콘 적용 빌드·검증](https://github.com/std07912/mail-control/actions/runs/43348094516)
