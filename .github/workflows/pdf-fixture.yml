@@ -1,0 +1,37 @@
+name: Publish dummy PDF test file
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['scripts/generate_pdf_fixture.py', '.github/workflows/pdf-fixture.yml']
+permissions:
+  contents: write
+concurrency:
+  group: pdf-test-files-v1
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install PDF validation library
+        run: python -m pip install PyMuPDF==1.26.6
+      - name: Generate and validate 50MB dummy PDF
+        run: |
+          python scripts/generate_pdf_fixture.py test-files
+          cd test-files
+          sha256sum pdf_split_test_50MB.pdf > pdf_split_test_50MB.pdf.sha256
+      - name: Publish downloadable PDF
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh release view test-files-v1 >/dev/null 2>&1; then
+            echo 'Keeping already published test assets.'
+            exit 0
+          fi
+          gh release create test-files-v1 test-files/pdf_split_test_50MB.pdf test-files/pdf_split_test_50MB.pdf.sha256 test-files/pdf_test_info.json test-files/pdf_test_preview.png --target '${{ github.sha }}' --title '분할 테스트 자료 · 50MB PDF' --notes '실제 업무정보가 없는 약 50MB, 20페이지 더미 PDF입니다. 페이지별 약 1.6~3.8MB로 9MB PDF 분할 검사용입니다. 모든 페이지 열기·렌더링과 독립 페이지 크기를 검증했습니다. Assets의 pdf_split_test_50MB.pdf를 다운로드하세요.' --prerelease
