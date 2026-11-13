@@ -9,6 +9,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -211,7 +212,7 @@ fun stateText(state: String) = when (state) {
         } },
         confirmButton = { TextButton({ zipDoc = null; vm.extract(doc, zipEncoding) }, enabled = zipItems.isNotEmpty()) { Text("승인된 문서 해제") } }, dismissButton = { TextButton({ zipDoc = null }) { Text("취소") } }) }
     packDoc?.let { doc -> AlertDialog(onDismissRequest = { packDoc = null }, title = { Text("소용량 ZIP 구성") },
-        text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(doc.name)
             Field(packLimit, { packLimit = it }, "파일당 목표 MB (기본 9)", !busy, keyboard = KeyboardType.Number)
             Row(verticalAlignment = Alignment.CenterVertically) {
